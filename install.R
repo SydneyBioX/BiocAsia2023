@@ -29,22 +29,15 @@ for (thispackage in c("ggplot2", "UpSetR",  "ggthemes" , "Seurat" , "dplyr" ,
 
 for (thispackage in c("SingleCellExperiment" ,"lisaClust"  , "spicyR" ,
                       "SPOTlight"  , "limma" , "org.Hs.eg.db",  "clusterProfiler" ,
-                      "scater"  ,  "scran" )){
+                      "scater"  ,  "scran" , "simpleSeg")){
   BiocManager::install(thispackage)
 }
 
 
 
-if (! "scFeatures" %in% installed.packages() ){
-  devtools::install_github("SydneyBioX/scFeatures")
-}
+devtools::install_github("SydneyBioX/scFeatures")
 
 
-
-if (! "ClassifyR" %in% installed.packages() ){
-  devtools::install_github("DarioS/ClassifyR")
-}
+devtools::install_github("DarioS/ClassifyR")
 
  
-
-BiocManager::install()

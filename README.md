@@ -1,3 +1,1 @@
-# scdneyDiseasePrediction
-
- https://sydneybiox.github.io/scdneyDiseasePrediction/
+# Unlocking single-cell and spatial analysis with scdney
