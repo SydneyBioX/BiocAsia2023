@@ -1,12 +1,17 @@
 ---
 title: "Unlocking single cell spatial omics analyses with scdney"
 author:
-- name: Yue Cao^1,2,3^, Andy Tran^1,2,3^, Nick Robertson^1,2,3^, Jean Yang^1,2,3^
+- name: Yue Cao^[yue.cao@sydney.edu.au], Andy Tran^[andy.t@sydney.edu.au], Dario Strbenac^[dario.strbenac@sydney.edu.au], Nicholas Robertson^[nicholas.robertson@sydney.edu.au], Jean Yang^[jean.yang@sydney.edu.au]
   affiliation:
-  - 1. Sydney Precision Data Science Centre, University of Sydney, Australia;   
-  - 2. School of Mathematics and Statistics, University of Sydney, Australia;    
-  - 3. Charles Perkins Centre, University of Sydney, Australia   
+  - 1. Sydney Precision Data Science Centre, University of Sydney, Australia;    
+  - 2. School of Mathematics and Statistics, University of Sydney, Australia;     
+  - 3. Charles Perkins Centre, University of Sydney, Australia;   
+  - 4. Laboratory of Data Discovery for Health Limited (D24H), Science Park, Hong Kong SAR, China.  
 date: 5 October, 2023
+
+params:
+  evalc: TRUE   ## EDIT to TRUE when generating output, otherwise 'FALSE'
+  show: 'hide'  ## EDIT to 'as.is' when generating Suggestions, otherwise 'hide'
 output:
   html_document:
     css: https://use.fontawesome.com/releases/v5.0.6/css/all.css
@@ -28,8 +33,12 @@ knitr::opts_chunk$set(echo = TRUE,  message=FALSE, warning= FALSE )
 ```
 
 
-```{r}
+```{r include=FALSE}
 .libPaths("/dora/nobackup/yuec/R")
+```
+
+
+```{r eval=params$evalc}
 library(SingleCellExperiment)
 library(ggplot2)
 library(scFeatures)
@@ -44,7 +53,6 @@ library(scattermore)
 library(tidyr)
 library(survival)
 library(survminer)
-library(spatstat.core)
 library(spatstat.geom)
 library(scater)
 library(scran)
@@ -53,34 +61,126 @@ library(reshape)
 theme_set(theme_classic())
 ```
 
+
+
+```{r eval=params$evalc}
+
+## these are some codes for plotting 
+
+
+plot_boxplot <- function( feature ){
+  
+  data <- t(feature)
+
+  patient <- unlist( lapply( strsplit( colnames(data), "_cond_"), `[`, 1) ) 
+  condition  <- unlist( lapply( strsplit( colnames(data), "_cond_"), `[`, 2))
+  condition <- data.frame(condition = condition )
+      
+  design <- model.matrix(~condition, data = condition)
+  fit <- lmFit(data, design)
+  fit <- eBayes(fit)
+  tT <- topTable(fit, n = Inf) 
+  
+  
+  # selecting the top 10 DE features 
+  top_gene <- rownames( tT)[1:10 ]
+  rownames( condition) <- colnames(data)
+   
+  data_plot <-  data[top_gene, ]   
+  
+  data_plot <- melt(data_plot )
+  
+  colnames(data_plot) <- c("X1", "X2", "value")
+   
+  data_plot$condition <- unlist( lapply( strsplit(  as.character( data_plot$X2), "_cond_"), `[`, 2))
+  
+  
+  p <- ggplot(data_plot, aes( x = X1, y = value , colour = condition)) + 
+    geom_boxplot()  + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+  
+   
+  return(p)
+  
+}
+  
+
+
+plot_barplot <- function(data , dodge=F  ){
+  
+
+  data$patient <- unlist( lapply( strsplit( rownames(data ), "_cond_"), `[`, 1))
+  data$condition <- unlist( lapply( strsplit( rownames(data ), "_cond_"), `[`, 2))
+  
+  data <- as.data.frame( melt(data, id=c("patient", "condition")) )
+ 
+ 
+  p <-   ggplot(data , aes( x = patient , y = value , fill = variable) ) +   
+    geom_bar(stat="identity"   ) + facet_wrap(~condition, scale="free") + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))  + 
+    scale_fill_manual(values = color_codes)
+ 
+  
+ 
+ return (p)
+  
+ 
+ 
+}
+
+
+```
+
+
+
+
 # Overview
 
-As single cell technology advances, the recent development of spatial omics allows us to examine the spatial organisation of cells within tissue in their native environment. This workshop will discuss the challenges and analytical focus associated with disease outcome prediction using multi-condition multi-sample spatial dataset. We will also talk about general analytic strategies and the critical thinking questions that arise in the workflow.  
+As single cell technology advances, the recent development of spatial omics allows us to examine the spatial organisation of cells within tissues in their native environment. This workshop will discuss the challenges and analytical focus associated with using multi-sample spatial datasets for disease prediction. We will also talk about general analytical strategies and the critical thinking questions that arise in the workflow.  
 
-
-<br><br>
+<br>
 <div class="aimbox"> 
-### <span class="fa-stack fa"><i class="fa fa-circle fa-stack-2x"></i><i class="fa fa-pencil-alt fa-stack-1x fa-inverse"></i></span> Preparation and assumed knowledge
+### <span class="fa-stack fa"><i class="fa fa-circle fa-stack-2x"></i><i class="fa fa-pencil-alt fa-stack-1x fa-inverse"></i></span> Preparation and assumed knowledge {-}
 - Knowledge of R syntax
 - Familiarity with the [SingleCellExperiment class](https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html) 
+- Basic knowledge in [single cell data analysis](https://bioconductor.org/books/release/OSCA/index.html). You can access our [previous workshops](https://github.com/SydneyBioX/scdney#scdney-workshops-series) for a quick review in single cell data analysis.
+- Ability to install all required R packages, please check `sessionInfo` at the end of this document to ensure you are using the correct version. 
+Familiarity with our previous workshop vignette on [Introduction to Single Cell RNA-seq Analysis](https://sydneybiox.github.io/BIS2019_SC/) 
 
-
-
-### <span class="fa-stack fa"><i class="fa fa-circle fa-stack-2x"></i><i class="fa fa-location-arrow fa-stack-1x fa-inverse"></i></span> Learning objectives
-- Understand and visualise spatial omics dataset     
+### <span class="fa-stack fa"><i class="fa fa-circle fa-stack-2x"></i><i class="fa fa-location-arrow fa-stack-1x fa-inverse"></i></span> Learning objectives {-}
+- Describe and visualise spatial omics datasets     
+- Calculate different measures that describe the spatial distribution of cell types
+- Generate individual feature representations from a cell-level expression matrix 
+- Perform multi-view disease outcome prediction with the package `ClassifyR`
+- Develop understanding on 
+  + how to assess the performance of classification models  
 - Explore various strategies for disease outcome prediction using spatial omics data      
-- Understand the transformation from cell level features to patient level features     
-- Generate patient representations from gene expression matrix      
-- Understand the characteristics of good classification models   
-- Perform disease outcome prediction using the feature representation and robust classification framework     
-
 </div>
 
-<br><br>
+**Note:** This data analysis workshop offers participants the opportunity to engage in hands-on analysis using R. However, if you are not comfortable with coding in R, you can still acquire valuable interpretation skills by reviewing the output we provide in this file.
+<br>
+
+### Time outline
+
+Structure of the 3-hour workshop:
+
+| Activity                              | Time |
+|---------------------------------------|------|
+| Introduction                          | 15m  |
+| Exploring spatial data                | 35m  |
+| Feature engineering with scFeatures   | 50m  |
+| Break                                 | 15m  |
+| Survival analysis with ClassifyR      | 45m  |
+| Identify cohort heterogeneity         | 20m  |
+| Concluding remarks                    |      |
 
 
 
-# Background of the dataset 
+# Initial exploration and visualisation 
+
+
+
+#### Data and background {-}  
 
 
 In this demo, we look at a Visium dataset taken from Kuppe, C., Ramirez Flores, R. O., Li, Z., Hayat, S., Levinson, R. T., Liao, X., ... & Kramann, R. (2022). Spatial multi-omic map of human myocardial infarction. Nature, 608(7924), 766-777.    
@@ -90,8 +190,6 @@ Visium captures spatial information, creating images that display the distributi
 In this dataset, the authors quantified the expression of >10000 genes in control and in patients with myocardial infarction. In this demo, we examine patients defined to be myogenic group and ischaemic group. Myogenic group is defined by sample taken from control and unaffected remote zone, ischaemic group is defined by sample taken from ischaemic zone. 
 
 
-# Initial exploration and visualisation 
-
 ## Exploration 1: How complex is my data ? 
 
 Examine the data objects:   
@@ -99,19 +197,23 @@ Examine the data objects:
 - The outcome is 11 myogenic samples (4 from control, 7 from remote zone) and 8 ischaemic samples.    
 
 
-```{r}
+```{r eval=params$evalc}
 
 data_sce <- readRDS("~/data/small_data.rds")
  
 data_sce
-print("expression matrix is stored in genes by cells matrix")
+## Expression matrix is stored in genes by cells matrix
 logcounts(data_sce)[1:7, 1:7]
 
-print("the object stores meta data (such as patient outcome information) about each cell")
+## The object stores meta data (such as patient outcome information) about each cell
+## the metadata is stored in colData() for a spatialexperiment object.
+# we need to convert to a data.frame to be input into datatable function
 DT::datatable( data.frame(colData(data_sce))[1:5, ], options = list(scrollX = TRUE))
 
 ```
 
+
+ 
  
 ## Exploration 2: How to visualise my data ?
 
@@ -121,7 +223,7 @@ Visium is a spot-based technology, meaning that each spot capture 1-10 cells. Th
 
 For demonstration purpose, in the plot below we visualise each spot using the cell type with maximum probability.   
  
-```{r }
+```{r eval=params$evalc}
 
 data_sce <- runUMAP(data_sce, exprs_values = "logcounts", scale=TRUE, min_dist = 0.3)
 
@@ -129,11 +231,14 @@ data_sce <- runUMAP(data_sce, exprs_values = "logcounts", scale=TRUE, min_dist =
 
 
 
-```{r fig.height=8, fig.width=12}
+```{r eval=params$evalc, fig.height=8, fig.width=12}
+## To highlight can highlight by [EXPLAIN]
 
 a <- plotUMAP(data_sce, colour_by = "celltype")
 b <- plotUMAP(data_sce, colour_by = "condition")
 c <- plotUMAP(data_sce, colour_by = "sample")
+
+## this allows us to combine multiple plot in a grid format 
 ggarrange(plotlist = list(a,b,c))
 
 
@@ -171,8 +276,12 @@ The advantage with spatial omics is that we can examine the organisation of the 
 to give a sense of what is random ordering.       
  
 
-```{r fig.height=4, fig.width=6}
+```{r eval=params$evalc, fig.height=4, fig.width=6}
+# SET UP code for visualising 
 
+# this section of the code is to set consistent colour for each cell type throughout this rmarkdown
+# we use the colour palette Tableau
+# because it only has 10 colours and we have 11 cell types, we colour the last cell type grey. 
 celltype <- c("Adipocyte" , "Cardiomyocyte" , 
               "Endothelial" ,  "Fibroblast" , "Lymphoid" ,    
               "Mast" ,   "Myeloid" , 
@@ -183,20 +292,25 @@ color_codes <-  c( tableau_palette$palette(10) , "lightgrey")
 names(color_codes) <- celltype
 
 
+```
  
+Here we choose a particular patient "IZ_P9_cond_Ischaemic" (a patient in the ischaemic group) and visualise its spatial pattern. 
+ 
+```{r eval=params$evalc}
+
+# select one sample to visualise  
 one_sample_data <- data_sce[, data_sce$sample  ==  "IZ_P9_cond_Ischaemic"]
-one_sample  <- colData(one_sample_data)
-one_sample <- data.frame(one_sample)
+one_sample  <- data.frame( colData(one_sample_data) )
 a <- ggplot(one_sample, aes(x = spatial_x , y = spatial_y, colour = celltype)) + geom_point(alpha=0.7) +  scale_colour_manual(values = color_codes) + ggtitle("Original slide")
 
  
-
 ```
- 
 
-```{r  fig.height=4, fig.width=6}
 
-print("Optional: Permute the cell type labels")
+
+```{r  eval=params$evalc, fig.height=4, fig.width=6}
+
+## Optional: Permute the cell type labels
 
 one_sample$celltype_permute <- sample(one_sample$celltype)
 b <- ggplot(one_sample, aes(x = spatial_x , y =  spatial_y, colour =celltype_permute)) + geom_point(alpha=0.7) +  scale_colour_manual(values = color_codes)  + ggtitle("Permute the cell type label")
@@ -206,9 +320,9 @@ b <- ggplot(one_sample, aes(x = spatial_x , y =  spatial_y, colour =celltype_per
 
  
 
-```{r  fig.height=4, fig.width=12}
+```{r eval=params$evalc, fig.height=4, fig.width=12}
 
-print("Optional: Permute the spatial coordinate")
+## Optional: Permute the spatial coordinate
 
 one_sample$spatial_x_permute <- sample(one_sample$spatial_x)
 one_sample$spatial_y_permute <- sample(one_sample$spatial_y)
@@ -219,12 +333,15 @@ c <- ggplot(one_sample, aes(x = spatial_x_permute , y = spatial_y_permute, colou
 ggarrange(plotlist = list(a,b,c), ncol =3 )
 ```
 
+Comparing the above plot shows spatial randomness. 
 
 
+
+## Exploration 4: Visium specific visualisation 
 
 Instead of plotting the cell type with maximum probability, we can also visualise the cell type composition of each spot using pie chart. 
 
-```{r}
+```{r eval=params$evalc}
 
 x <- data.frame( imagecol = one_sample$spatial_y, 
                  imagerow = one_sample$spatial_x)
@@ -235,10 +352,10 @@ y <- data.frame( colData(one_sample_data)[ ,celltype  ] )
  
 rownames(y) <- paste0("Spot", 1:nrow(y))
 
-plotSpatialScatterpie(x = x, y = y , pie_scale = 0.7)+theme_classic() +  scale_fill_manual(values = color_codes) + ylab("spatial_y") + xlab("spatial_y")
+
+## we use a function to plot the piechart
+plotSpatialScatterpie(x = x, y = y , pie_scale = 0.7) + theme_classic() +  scale_fill_manual(values = color_codes) + ylab("spatial_y") + xlab("spatial_y")
   
-
-
 ```
 
 
@@ -259,7 +376,7 @@ Q3: Is there a structure in the data or is the cell type randomly distribution?
 
 We begin by examine how can we identify and visualise regions of tissue where spatial associations between cell-types is similar? There are many packages that perform this task andhere we use the lisaClust function [https://www.bioconductor.org/packages/devel/bioc/html/lisaClust.html] that is based on “local L-function” to spatially clusters cells into different regions with similar cell type composition.
 
-```{r }
+```{r eval=params$evalc}
 set.seed(51773)
  
 
@@ -282,13 +399,15 @@ data_sce  <- lisaClust(
 ```
 
 
+ 
+
 ##  Which regions appear to be different between the ischaemic and myogenic patients? 
 
 ### Visualise regions on individual level 
 
 Using the slide we previously shown, visualise the region output. 
 
-```{r fig.height=3, fig.width=10}
+```{r eval=params$evalc, fig.height=3, fig.width=10}
 
 metadata <- colData(data_sce)
 metadata <- metadata[ metadata$sample == "IZ_P9_cond_Ischaemic",  ]
@@ -306,6 +425,9 @@ color_codes <- c(color_codes, "darkgrey" , "grey90")
 
 names(color_codes) <- c( celltype ,  "other regions")
 
+
+# put this in a function 
+# show the hatching plot as well 
 for ( thisregion in sort(unique(metadata$region))){
         
         selected_region_index <-  metadata$region == thisregion
@@ -348,10 +470,12 @@ We can better interpret the region output by summarising the proportion of each 
 Looking at the composition of cell types in each region, comparing between ischaemic and myogenic. 
 
 
-```{r  fig.height=4, fig.width=10}
+```{r  eval=params$evalc, fig.height=4, fig.width=10}
 
 df <- data.frame(colData( data_sce))
  
+
+# comment every line of the code 
 
 df_plot <- NULL
 for ( thispatient in unique(df$sample)){
@@ -388,7 +512,7 @@ Q4: Which regions would you focus on next ?
 
 
 
-```{r  fig.height=4, fig.width=10}
+```{r  eval=params$evalc, fig.height=4, fig.width=10}
 
 df <- data.frame(colData( data_sce))
 
@@ -427,7 +551,7 @@ Let's focus on region 2 and visualise the boxplot of cell type distribution.
 
 
 
-```{r fig.height=4, fig.width= 12 }
+```{r eval=params$evalc, fig.height=4, fig.width= 12 }
 
 df <- data.frame(colData( data_sce))
 
@@ -490,19 +614,22 @@ The different types of features constructed enable a more comprehensive multi-vi
 
 
 
-```{r}
+```{r eval=params$evalc}
 
  
 print("number of cells in each sample")
-metadata <- data.frame( table(data_sce$sample) )
-colnames(metadata)[1] <- "Patient"
-DT::datatable(metadata , options = list(pageLength = 5), width = "400px")
-  
+table(data_sce$sample)
+# metadata <- data.frame( table(data_sce$sample) )
+# colnames(metadata)[1] <- "Patient"
+# DT::datatable(metadata , options = list(pageLength = 5), width = "400px")
+
 print("number of cells in each celltype")
-metadata <- data.frame( table(data_sce$celltype) )
-colnames(metadata)[1] <- "Region specific cell type"
-DT::datatable(metadata , options = list(pageLength = 5), width = "400px")
-  
+table(data_sce$celltype)
+
+# metadata <- data.frame( table(data_sce$celltype) )
+# colnames(metadata)[1] <- "Region specific cell type"
+# DT::datatable(metadata , options = list(pageLength = 5), width = "400px")
+#   
 ```
 
 
@@ -517,13 +644,20 @@ Is there any sample or cell types you would like to remove from the data?
 </div>
 
 
-## How to create one molecular representations for an individual ?
-
-All the feature types can be generated in one line of code. This runs the function using default settings for all parameters, for more information, type `?scFeatures`.
 
 
-```{r eval=FALSE, include=TRUE}
+## How to create one molecular representations for an individual? {.tabset}
+ 
 
+There are different ways you can use scFeatures to generate molecular representation for patients.   
+
+
+### Selected features of interest
+
+scFeatures can also generate selected feature types. For example, in the below code we run scFeatures to generate cell type proportion. 
+
+
+```{r}
 #scFeatures requires the following columns 
 #  data, sample, x_cord and y_cord
 data <- logcounts( data_sce )
@@ -535,26 +669,45 @@ spatialCoords <- list(data_sce$spatial_x, data_sce$spatial_y)
 prediction.scores <- colData(data_sce)[, celltype]
 prediction.scores <- as.matrix( t(prediction.scores)  )
 
- 
+
 scfeatures_result <- scFeatures(data = data ,  sample = sample, 
                 spatialCoords = spatialCoords , spotProbability = prediction.scores, 
-                type ="spatial_t", ncores = 20)
+                feature_types = "proportion_raw",
+                type ="spatial_t" )
+```
 
  
+```{r eval=params$evalc }
+feature <- scfeatures_result$proportion_raw
+plot_barplot( feature ) + ggtitle("Proportion raw feature")
 
 ```
 
+ 
+### All cell types and features in one line of code 
 
  
+The code below generates all feature types for all cell types, to save time we won't run it in today's workshop, **please just load the prepared RDS file in the following chunk.**
 
-## Visualising and exploring scFeatures output
+```
+scfeatures_result <- scFeatures(data = data ,  sample = sample, 
+                spatialCoords = spatialCoords , spotProbability = prediction.scores, 
+                type ="spatial_t", ncores = 10)
+```
 
 
-We have generated a total of 13 feature types and stored them in a list. All generated feature types are stored in a matrix of samples by features.
+```{r eval=params$evalc}
+scfeatures_result <- readRDS("~/data/scfeatures_result_matrix.rds")
+```
+ 
+
+## How to explore scFeatures output?
+
+From the section above, we have generated a total of 13 feature types and stored them in a list. All generated feature types are stored in a matrix of samples by features.
 For example, the first list element contains the feature type “proportion_raw”, which contains the cell type proportion features for each patient sample. We could print out the first 5 columns and first 5 rows of the first element to see.
 
 
-```{r}
+```{r eval=params$evalc}
 scfeatures_result <- readRDS("~/data/scfeatures_result_matrix.rds")
  
 # we have generated a total of 13 feature types
@@ -570,12 +723,16 @@ DT::datatable(meta_table , options = list(scrollX = TRUE))
 
 ```
 
+
+### Visually exploring features 
+
+
 Once the features are generated, you may wish to visually explore the features. 
 
 Here we plot a volcano plot and a dotplot for the cell type specific expression feature.   
 
 
-```{r fig.height=5, fig.width=7}
+```{r eval=params$evalc, fig.height=5, fig.width=7}
 gene_mean_bulk <- scfeatures_result$gene_mean_bulk
 # this transposes the data
 # in bioinformatics conversion, features are stored in rows 
@@ -601,7 +758,7 @@ p
 
 
 
-```{r fig.height=5, fig.width=7}
+```{r eval=params$evalc, fig.height=5, fig.width=7}
 tT <- tT[ order(tT$logFC, decreasing = T), ]
 tT <- tT[1:20, ]
 ggplot( tT , aes( y = reorder(gene, logFC) , x = logFC  ) )+
@@ -624,106 +781,65 @@ Q6: Which figure do you prefer? The volcano plot or the dotplot?
 </div>
 
 
+### Visualise distribution of features across patients {.tabset}
+
 We can also visualise the distribution of the features across the patients. 
 This helps to examine whether there exists any batch effect due to patient effect.   
 
 
-```{r}
-plot_boxplot <- function( feature ){
-  
-  data <- t(feature)
+#### Proportion raw
 
-  patient <- unlist( lapply( strsplit( colnames(data), "_cond_"), `[`, 1) ) 
-  condition  <- unlist( lapply( strsplit( colnames(data), "_cond_"), `[`, 2))
-  condition <- data.frame(condition = condition )
-      
-  design <- model.matrix(~condition, data = condition)
-  fit <- lmFit(data, design)
-  fit <- eBayes(fit)
-  tT <- topTable(fit, n = Inf) 
-  
-  
-  # selecting the top 10 DE features 
-  top_gene <- rownames( tT)[1:10 ]
-  rownames( condition) <- colnames(data)
-   
-  data_plot <-  data[top_gene, ]   
-  
-  data_plot <- melt(data_plot )
-  data_plot$condition <- unlist( lapply( strsplit(  as.character( data_plot$X2), "_cond_"), `[`, 2))
-  
-  
-  p <- ggplot(data_plot, aes( x = X1, y = value , colour = condition)) + 
-    geom_boxplot() + geom_point() +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
-  
-   
-  return(p)
-  
-}
-  
-
-
-plot_barplot <- function(data , dodge=F  ){
-  
-
-  data$patient <- unlist( lapply( strsplit( rownames(data ), "_cond_"), `[`, 1))
-  data$condition <- unlist( lapply( strsplit( rownames(data ), "_cond_"), `[`, 2))
-  
-  data <- as.data.frame( melt(data, id=c("patient", "condition")) )
- 
- 
-  p <-   ggplot(data , aes( x = patient , y = value , fill = variable) ) +   
-    geom_bar(stat="identity"   ) + facet_wrap(~condition, scale="free") + 
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))  + 
-    scale_fill_manual(values = color_codes)
- 
-  
- 
- return (p)
-  
- 
- 
-}
-
-
-```
-
-
-
-
-```{r fig.height=12, fig.width=16}
+```{r eval=params$evalc}
 
 feature <- scfeatures_result$proportion_raw
  
-a <- plot_barplot(feature ) + ggtitle("Proportion raw feature")
+plot_barplot(feature ) + ggtitle("Proportion raw feature")
 
+  
+```
+
+
+#### Gene mean celltype
+
+```{r eval=params$evalc}
 
 feature <- scfeatures_result$gene_mean_celltype
 feature   <- feature[  , grep("Cardio", colnames(feature)) ]
-b <- plot_boxplot(feature) + ggtitle("Gene mean celltype feature")
-
-feature <- scfeatures_result$pathway_mean
-c <- plot_boxplot(feature) + ggtitle("Pathway mean feature")
-
-feature <- scfeatures_result$gene_mean_bulk
-d <- plot_boxplot(feature) + ggtitle("Gene mean bulk feature")
-
-feature <- scfeatures_result$nn_correlation
-e <- plot_boxplot(feature) + ggtitle("Nearest neighbour correlation feature")
-
-
-ggarrange(plotlist = list(a, b,c,d,e) , ncol = 2, nrow = 3 )
-
-
- 
-
+plot_boxplot(feature) + ggtitle("Gene mean celltype feature")
 
 
 ```
 
+#### Pathway mean 
+
+```{r}
+
+feature <- scfeatures_result$pathway_mean
+plot_boxplot(feature) + ggtitle("Pathway mean feature")
 
 
+ 
+```
+
+#### Gene mean bulk 
+
+```{r}
+feature <- scfeatures_result$gene_mean_bulk
+plot_boxplot(feature) + ggtitle("Gene mean bulk feature")
+
+
+```
+
+#### Nearest neighbour correlation
+
+```{r}
+feature <- scfeatures_result$nn_correlation
+plot_boxplot(feature) + ggtitle("Nearest neighbour correlation feature")
+
+```
+
+ 
+### Automatic feature visualisation 
 
 To accommodate for easier interpretation of the features, scFeatures contains a function run_association_study_report that enables the user to readily visualise and explore all generated features with one line of code.
 
@@ -756,7 +872,10 @@ Q8: Are the conditions in your data relatively easy or difficult to distinguish?
 
 
 
-# Can we classify or discrimiante between the ischaemic and myogenic patients? 
+# Can we classify or discrimiante between the ischaemic and myogenic samples ? 
+
+In this section we build a classification model to predict whether the samples belong to the ischaemic or myogenic group.   
+
 
 ## Building classification model
 
@@ -785,7 +904,7 @@ classifyr_result <- crossValidate(scfeatures_result,
 
 To examine the classification model performance, we first need to specify a metric to calculate. Here, we calculate the balanced accuracy.
 
-```{r }
+```{r eval=params$evalc}
 classifyr_result <-  readRDS("~/data/classifyr_result.rds")
 
 classifyr_result <- lapply(classifyr_result, 
@@ -795,7 +914,7 @@ classifyr_result <- lapply(classifyr_result,
 Format the output and visualise the accuracy using boxplots.
 
 
-```{r}
+```{r eval=params$evalc}
 
 level_order <- names(scfeatures_result)
 
@@ -808,8 +927,6 @@ p
 ```
 
 
- 
-
 
 # Appendix
 
@@ -821,7 +938,7 @@ The L function is a spatial statistic used to assess the spatial distribution of
 
 
 
-```{r fig.height=4, fig.width=10}
+```{r eval=params$evalc, fig.height=4, fig.width=10}
 
 tableau_palette <- scale_colour_tableau() 
 color_codes <- tableau_palette$palette( 10 )
@@ -859,7 +976,7 @@ ggarrange(plotlist = list( a , b))
 We calculate the nearest neighbours of each cell and then calculate the pairs of cell type based on the nearest neighbour. This allow us to summarised it into a cell type interaction composition.
 
 
-```{r fig.height=6, fig.width=10}
+```{r eval=params$evalc, fig.height=6, fig.width=10}
 
 tableau_palette <- scale_colour_tableau() 
 color_codes <- tableau_palette$palette( 10 )
@@ -901,7 +1018,7 @@ ggarrange(plotlist = list( a , b))
 Moran's I is a spatial autocorrelation statistic based on both location and values. It quantifies whether similar values tend to occur near each other or dispersed.     
 
 
-```{r fig.height=4, fig.width=10}
+```{r eval=params$evalc, fig.height=4, fig.width=10}
 
 
 
@@ -930,16 +1047,12 @@ ggarrange(plotlist = list( a , b))
 
 This metric measures the correlation of proteins/genes between a cell and its nearest neighbor cell.   
 
-We see from both prediction and survival analysis that the feature type "nn correlation" (nearest neighbour correlation) perform the best.   
-
-
 Here we pick the gene "COL1A1" as an example to illustrate the concept.  
 
-```{r fig.height=5, fig.width=10}
+```{r eval=params$evalc, fig.height=5, fig.width=10}
 
 
-    
- plot_nncorrelation <- function(thissample , thisprotein){
+plot_nncorrelation <- function(thissample , thisprotein){
    
        sample_name <- thissample
        thissample <- data_sce[, data_sce$sample ==     sample_name]
@@ -992,14 +1105,15 @@ ggarrange(plotlist = list( p1 , p2))
 
 ## Session info
 
-```{r}
+```{r eval=params$evalc}
 sessionInfo()
 ```
 
 
 
+## Acknowledgment 
 
-
+The authors thank all their colleagues, particularly at The University of Sydney, Sydney Precision Data Science and Charles Perkins Centre for their support and intellectual engagement. Special thanks to Ellis Patrick, Shila Ghazanfar, Andy Tran for guiding and supporting the building of this workshop.
 
 
 
