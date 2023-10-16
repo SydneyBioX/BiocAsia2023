@@ -494,7 +494,7 @@ draw_region_clustering_result(data_sce ,
 
 ###  Across individuals {-}
 
-We can better interpret the region output by summarising the proportion of each cell type in a region across the individuals. Looking at the composition of cell types in each region, comparing between prognostic outcome.  
+We can better interpret the region output by summarising the proportion of each cell type in a region across the individuals. We look at the composition of cell types in each region, and compare between prognostic outcomes.  
 
 
 ```{r  fig.height=4, fig.width=10, eval=params$evalc}
@@ -519,7 +519,7 @@ Q4: Which regions appear to be different between poor prognosis (short-term surv
 
 
 ### Further exploration by visualising selected regions {-}
-The number of sub-cell types increase considerably when we want to add spatial domain (regions) information. To enhance clarity and facilitate understanding, it may be helpful to choose for a predetermined region. The code generates a set of boxplots that enable the comparison of cell type proportions between individuals with good and poor prognosis in `region_5`.     
+The number of sub-cell types increase considerably when we want to add spatial domain (region) information. To enhance clarity and facilitate understanding, it may be helpful to choose a predetermined region. The code generates a set of boxplots that enable the comparison of cell type proportions between individuals with good and poor prognosis in `region_5`.     
 
 ```{r fig.height=4, fig.width= 12 , eval=params$evalc}
 draw_selected_region_boxplot(data_sce, 
@@ -532,7 +532,7 @@ draw_selected_region_boxplot(data_sce,
 ```
 
 #  How do we generate a molecular representation for each individual? 
-In this workshop, we use the scFeatures package to generate a molecular representation for each individuals from the matrix of proteins x cells. The molecular representation is interpretable and hence facilitates downstream analysis of the individual. In general, scFeatures generates features across six categories representing different molecular views of cellular characteristics. These include:
+In this workshop, we use the scFeatures package to generate a molecular representation for each individuals from the matrix of `features x cells`. The molecular representation is interpretable and hence facilitates downstream analysis of the individual. In general, `scFeatures` generates features across six categories representing different molecular views of cellular characteristics. These include:
 
 i) cell type proportions
 ii) cell type specific gene expressions
@@ -541,7 +541,7 @@ iv) cell type specific cell-cell interaction (CCI) scores
 v) overall aggregated gene expressions
 vi) spatial metrics
 
-The different types of features constructed enable a more comprehensive multi-view understanding of each individuals from a matrix of `proteins x cells`. By default, the function will generated a total of 13 different types of features (feature_types) shown below and stored them in a list. All generated feature types are stored in a matrix of `samples x features`. 
+The different types of features constructed enable a more comprehensive multi-view understanding of each individual from a matrix of `spot x cells`. By default, the function will generate a total of 13 different types of features (feature_types) shown below and store them in a list. All generated feature types are stored in a matrix of `samples x features`. 
 ```
 ##  [1] "proportion_raw"       "proportion_logit"     "proportion_ratio"    
 ##  [4] "gene_mean_celltype"   "gene_prop_celltype"   "gene_cor_celltype"   
@@ -549,7 +549,7 @@ The different types of features constructed enable a more comprehensive multi-vi
 ## [10] "L_stats"              "celltype_interaction" "morans_I"            
 ## [13] "nn_correlation"
 ```
-In additional to the spatial measure, we can also conside the region information as an additional layer of information. Thus, the following code aims to create cell-type specific features for each region. We use the function "paste0" to construct **region-specific sub-cell types** and name it as `celltype` in the R object `data_sce`. For simplicity, in this workshop, the variable `celltype` in the R object `data_sce` refers to region-specific sub-cell types.
+In additional to the spatial measure, we can also consider region information as an additional layer of information. Thus, the following code aims to create cell-type specific features for each region. We use the function "paste0" to construct **region-specific sub-cell types** and name it as `celltype` in the R object `data_sce`. For simplicity, in this workshop, the variable `celltype` in the R object `data_sce` refers to region-specific sub-cell types.
 
 ```{r eval=FALSE}
 region <- data_sce$region
@@ -575,8 +575,8 @@ DT::datatable( data.frame(table( data_sce$celltype)) , options = list(scrollX = 
 Q6: Are there any samples or cell types you would like to remove from the data?
 </div>
 
-## How to create molecular representations of individuals ?  {.tabset}
-There are different ways you can use `scFeatures` to generate molecular representation for individuals and it requires the following information for spatial data. 
+## How to create molecular representations of individuals?  {.tabset}
+There are different ways you can use `scFeatures` to generate molecular representations for individuals and it requires the following information for spatial data. 
 
 - data,  
 - sample, 
@@ -585,10 +585,10 @@ There are different ways you can use `scFeatures` to generate molecular represen
 - feature_types, and
 - type
 
-There are a total of 13 different types of features (feature_types) that you can choose to generate.  The arugment type refers the type of input data we have.  This is either `scrna` representing  single-cell RNA-sequencing data; `spatial_p` representing spatial proteomics data or `spatial_t` representing single cell spatial data. 
+There are a total of 13 different types of features (feature_types) that you can choose to generate. The argument type refers the type of input data we have. This is either `scrna` (single-cell RNA-sequencing data), `spatial_p` (spatial proteomics data), or `spatial_t` (single cell spatial data). 
 
 ### Calculate feature_types {-}
-Suppose that we are interested in determining the proportion of each cell type in each individual within each region. It is necessary to specify `type = spatial_p` to reflect that we have spatial proteomics data and `feature_types = proportion_raw` to indicate we intend to calculate cell type proporation for each of the region-specific sub-cell types.
+Suppose that we are interested in determining the proportion of each cell type in each individual within each region. It is necessary to specify `type = spatial_p` to reflect that we have spatial proteomics data and `feature_types = proportion_raw` to indicate we intend to calculate cell type proportion for each of the region-specific sub-cell types.
 
 ```{r eval=params$evalc}
 ## [A] The next few lines extract specific information from data_sce as input to scFeatures. 
@@ -666,8 +666,8 @@ scfeatures_result <- scFeatures(IMCmatrix,
                                 ncores = 32)
 ```
 
-## What can we learn from scFeatures output?
-Assuming you have already generated a collection of molecular representation for individuals. Please load the prepared RDS file `scfeatures_result.RDS`. Again, you can remind yourself that all generated feature types are stored in a matrix of `samples x features`. 
+## What can we learn from the outputs from scFeatures?
+Assuming you have already generated a collection of molecular representation for individuals, please load the prepared RDS file `scfeatures_result.RDS`. Again, you can remind yourself that all generated feature types are stored in a matrix of `samples x features`. 
 
 ```{r eval=params$evalc}
 # Upload pre-generated RDS file
@@ -681,7 +681,7 @@ lapply(scfeatures_result, dim)
 ```
 
 
-### Association study - can we identify "differential expression" for feature of interest
+### Association study - can we identify "differential expression" for a feature of interest
 The R object `scfeatures_result` contains a variety of features. A important question focuses on the identification of features that reflect an association with the prognostic outcome, specifically distinguishing between good and poor outcomes.  The code provided below demonstrates the use of the `limma()` function to fit a linear model for the purpose of analysing gene_mean_celltype as an illustration feature.  The feature type known as `gene_mean_celltype` represents the mean protein expression for each sub-cell type specific to a spatial region. It is a matrix consisting of 77 individuals and 4180 features. It is important to acknowledge that within the context of our IMC data, the term "gene" is used to refer to "protein". 
 
 ```{r eval=params$evalc, fig.height=5, fig.width=7}
@@ -712,7 +712,7 @@ tT$gene <- rownames(tT)
 tT[1:5,]
 ```
 
-We visualize the comparison using a volcano plot and a dotplot for the cell type specific expression feature. This is a type of scatter-plot that is used to quickly identify changes in large data sets and represent thesignificance (y-axes) versus effect size or fold-change (x-axes). 
+We visualise the comparison using a volcano plot and a dotplot for the cell type specific expression feature. This is a type of scatter-plot that is used to quickly identify changes in large datasets and represent the significance (y-axis) versus effect size or fold-change (x-axis). 
 
 ```{r eval=params$evalc, fig.height=5, fig.width=7}
 # The volcano plot - Significance vs Effect Size
@@ -742,8 +742,8 @@ Q4: Which figure do you prefer? The volcano plot or the dotplot?
 </div>
 
 
-### Can we identify feature of interest among each types of feature category ?  {.tabset}
-In order to further develop our understanding of our data, it is important to bear in mind that the outcomes derived from `scFeatures` combine several association studies.  Hence, it is necessary to examine every separate feature category as an individual unit of study. This section presents a graphic representation showing how to visualise the distribution of features across individuals. The following code has been developed to identify and retrieve all samples that have been associated to both good and poor prognosis. This particular step is necessary in this setting as our focus is limited to two specific category of individuals rather than including all samples.
+### Can we identify the feature of interest among each type of feature category?  {.tabset}
+In order to further develop our understanding of our data, it is important to bear in mind that the outcomes derived from `scFeatures` combine several association studies. Hence, it is necessary to examine every separate feature category as an individual unit of study. This section presents a graphic representation showing how to visualise the distribution of features across individuals. The following code has been developed to identify and retrieve all samples that have been associated to both good and poor prognosis. This particular step is necessary in this setting as our focus is limited to two specific categories of individuals rather than including all samples.
 
 ```
 feature <- feature[ grep("poor|good", rownames(feature )),  ]
@@ -773,11 +773,11 @@ plot_boxplot(feature) + ggtitle("Nearest neighbour correlation feature")
 ```
 
 ### Association study report
-To accommodate for easier interpretation of the features, `scFeatures` contains a function `run_association_study_report` that enables the user to readily visualise and explore all generated features with one line of code.  This should be used with caution as depending on the number of cell-types consider, some of the graphics that is automatically generated may not be the most efficient way for interpretation. 
+To accommodate for easier interpretation of the features, `scFeatures` contains a function `run_association_study_report` that enables the user to readily visualise and explore all generated features with one line of code. This should be used with caution as depending on the number of cell-types considered, some of the automatically-generated graphics may not be the most efficient way for interpretation.
 
 In the code below we perform the following tasks:
 
-- 1. Specify a folder to store the html report.  using the function `getwd()` we specify that we will store it in the current working directory. 
+- 1. Specify a folder to store the html report.  Using the function `getwd()` we specify that we will store it in the current working directory. 
 - 2. A small `for loop` is created to select all the samples associated with good and poor prognosis and generate a new scfeatures_result. This step is only necessary if the comparison of interest is a subset of all your data. 
 - 3. Run the function `run_association_study_report()`
 
@@ -803,7 +803,7 @@ Recurrence risk estimation is a fundamental concern in medical research, particu
 
 ## Building a survival model 
 Recall in the previous section that we have stored the 13 matrices of different feature types in a list. Instead of manually retrieving each matrix from the list to build separate models, classifyR can directly take a list of matrices as an input and run a repeated cross-validation model on each matrix individually. Below, we run 5 repeats of 5-fold cross-validation.  A high score indicates prognosis of a worse outcome than a lower risk score.
-Whilte we have provided the code below, to save time, **just load the prepared RDS file `classifyr_result_IMC.rds`** and we will focus on the interpretation in this workshop. 
+Although we have provided the code below, to save time, **just load the prepared RDS file `classifyr_result_IMC.rds`** and we will focus on the interpretation in this workshop. 
 
 ``` 
 # We use the following variables:     
@@ -894,7 +894,14 @@ Q7: Is the highest predictive performance the only way to choose the best model 
 
 
 
-## Do each individual requires a different collection of features ? Dario word it better ? 
+## Does each individual require a different collection of features?
+
+Using `samplesMetricMap` compare the per-sample C-index for Cox models for all kinds of metafeatures.
+
+```{r eval=params$evalc}
+library(grid)
+samplesMetricMap(classifyr_result)
+```
 
 <div class="aimbox"> 
 <span class="fa-stack fa-lg">
@@ -902,8 +909,7 @@ Q7: Is the highest predictive performance the only way to choose the best model 
 <i class="far fa-chart-bar fa-stack-1x fa-inverse"></i>
 </span> <strong>Interactive Q&A:</strong>   
 
-Q8: Is spatial features important for predicting recurrance ? 
-Q9: Does your conclusion from the question above holds for all individuals ?
+Q8: Are spatial features important for predicting recurrence? Does it hold for all individuals?
 </div>
 
 
