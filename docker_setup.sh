@@ -15,7 +15,7 @@ git clone https://github.com/SydneyBioX/BiocAsia2023 /home/gittmp/
 
 ## wget all data files from Google Cloud Storage into /home/CPC/
 cd /home/gittmp
-wget -O data.zip "https://www.dropbox.com/scl/fi/b426qns8nowvyj3n8e6cz/data.zip?rlkey=s3cu7xu16nckv376xdpjywqbp&dl=0"
+wget -O data.zip "https://www.dropbox.com/scl/fi/vh6zspd3xp9p7ih6rgnz8/data.zip?rlkey=5abvspvoeix1s00md69t2v53f&dl=0"
 unzip data.zip
 
 ls /home/
