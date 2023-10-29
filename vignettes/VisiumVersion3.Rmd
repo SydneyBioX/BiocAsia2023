@@ -1,5 +1,5 @@
 ---
-title: "Unlocking single cell spatial omics analyses with scdney - Visum"
+title: "Unlocking single cell spatial omics analyses with scdney - Visium"
 author: Yue Cao,
         Andy Tran,
         Dario Strbenac,
@@ -34,7 +34,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,  message=FALSE, warning= FALSE )
 library(SpatialExperiment)
-data_sce <- readRDS("data/small_data.rds")
+data_sce <- readRDS("~/biocasia_data/small_data.rds")
 ```
 
  
@@ -278,7 +278,7 @@ In this dataset, the authors quantified the expression of >10000 genes in contro
 ## Exploration 1: How complex is my data ? 
 
 ```{r eval=params$evalc}
-data_sce <- readRDS("~/data/small_data.rds")
+data_sce <- readRDS("~/biocasia_data/small_data.rds")
  
 data_sce
 ## Expression matrix is stored in genes by cells matrix
@@ -687,7 +687,7 @@ scfeatures_result <- scFeatures(data = data ,
 
 
 ```{r eval=params$evalc}
-scfeatures_result <- readRDS("~/data/scfeatures_result_matrix.rds")
+scfeatures_result <- readRDS("~/biocasia_data/scfeatures_result_matrix.rds")
 ```
  
 
@@ -696,7 +696,7 @@ Assuming you have already generated a collection of molecular representations fo
 
 ```{r eval=params$evalc}
 # Upload pre-generated RDS file
-scfeatures_result <- readRDS("~/data/scfeatures_result_matrix.rds")
+scfeatures_result <- readRDS("~/biocasia_data/scfeatures_result_matrix.rds")
  
 # We have generated a total of 13 types of feature categories
 names(scfeatures_result)
@@ -869,7 +869,7 @@ classifyr_result <- crossValidate(scfeatures_result,
 To examine the classification model performance, we first need to specify a metric to calculate. Here, we calculate the balanced accuracy.
 
 ```{r eval=params$evalc}
-classifyr_result <-  readRDS("~/data/classifyr_result.rds")
+classifyr_result <-  readRDS("~/biocasia_data/classifyr_result.rds")
 classifyr_result <- lapply(classifyr_result, 
                            function(x) calcCVperformance(x, performanceType = "Balanced Accuracy"))
 ```

@@ -1,5 +1,5 @@
 ---
-title: "Unlocking single cell spatial omics analyses with scdney"
+title: "Unlocking single cell spatial omics analyses with scdney - IMC"
 author: Yue Cao,
         Andy Tran,
         Dario Strbenac,
@@ -35,7 +35,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE,  message=FALSE, warning= FALSE)
 
 library(SingleCellExperiment)
-load("~/data/breastCancer.RData")
+load("~/biocasia_data/breastCancer.RData")
 data_sce = IMC
 ```
 
@@ -671,7 +671,7 @@ Assuming you have already generated a collection of molecular representation for
 
 ```{r eval=params$evalc}
 # Upload pre-generated RDS file
-scfeatures_result <- readRDS("~/data/scfeatures_result.RDS")
+scfeatures_result <- readRDS("~/biocasia_data/scfeatures_result.RDS")
 
 # we have generated a total of 13 feature types
 names(scfeatures_result)
@@ -827,7 +827,7 @@ classifyr_result <- crossValidate(clinicalAndOmics, c("timeRFS", "eventRFS"),
 
 
 ```{r eval=params$evalc}
-classifyr_result <- readRDS("~/data/classifyr_result_IMC.rds")
+classifyr_result <- readRDS("~/biocasia_data/classifyr_result_IMC.rds")
 ```
 
 
@@ -841,7 +841,7 @@ survForestCV <- crossValidate(clinicalAndOmics, outcome, nFeatures = nFeatures,
 ```
 
 ```{r eval=params$evalc}
-survForestCV <- readRDS("~/data/survForestCV.RDS")
+survForestCV <- readRDS("~/biocasia_data/survForestCV.RDS")
 ```
 
 
@@ -925,9 +925,6 @@ Q8: Are spatial features important for predicting recurrence? Does it hold for a
 The L function is a spatial statistic used to assess the spatial distribution of cell types. It assesses the significance of cell-cell interactions, by calculating the density of a cell type with other cell types within a certain radius. High values indicate spatial association, low values indicate spatial avoidance.
 
 ```{r fig.height=4, fig.width=10, eval=params$evalc}
-tableau_palette <- scale_colour_tableau( palette = "Tableau 20")
-color_codes <- tableau_palette$palette(10)
-# select one patient 
 one_sample  <- data_sce[ , data_sce$metabricId == "MB-0128"  ]
 one_sample <- data.frame( colData(one_sample) )
 
@@ -936,16 +933,16 @@ one_sample$celltype <- one_sample$description
 # select certain cell types to examine the interaction 
 index <-  one_sample$celltype  %in% c("B cells", "Fibroblasts")
 one_sample$celltype[!index] <- "others"
-a <-ggplot( one_sample, aes(x = Location_Center_X , y = Location_Center_Y, colour = celltype )) + geom_point()  + scale_colour_manual(values = color_codes)  + ggtitle( "Patient MB-0128 - high L value with \n B cells interacting Fibroblasts")
+a <-ggplot( one_sample, aes(x = Location_Center_X , y = Location_Center_Y, colour = celltype )) + geom_point()  + ggtitle( "Patient MB-0128 - high L value with \n B cells interacting Fibroblasts") + scale_colour_manual(values = c("coral" , "steelblue" , "grey70"))
  
 
 one_sample$celltype <- one_sample$description
-index <-  one_sample$celltype  %in% c("melano", "Tc.ae")
+index <-  one_sample$celltype  %in% c("B cells", "HR- CK7-")
 one_sample$celltype[!index] <- "others"
-b <- ggplot( one_sample, aes(x = Location_Center_X , y = Location_Center_Y, colour = celltype )) + geom_point()  + scale_colour_manual(values = color_codes)  + ggtitle( "Patient MB-0128 - low L value with \n B cells interacting HR_ CK7")
+b <- ggplot( one_sample, aes(x = Location_Center_X , y = Location_Center_Y, colour = celltype )) + geom_point()    + ggtitle( "Patient MB-0128 - low L value with \n B cells interacting HR_ CK7")+ scale_colour_manual(values = c("coral" , "steelblue" , "grey70"))
+ 
  
 ggarrange(plotlist = list(a,b))
- 
 ```
 
 
@@ -957,17 +954,16 @@ We calculate the nearest neighbours of each cell and then calculate the pairs of
 
 
 ```{r fig.height=6, fig.width=10, eval=params$evalc}
- 
-one_sample  <- data_sce[ , data_sce$metabricId == "MB-0263"  ]
+ one_sample  <- data_sce[ , data_sce$metabricId == "MB-0263"  ]
 one_sample <- data.frame( colData(one_sample) )
 
 one_sample$celltype <- one_sample$description
  
-a <-ggplot( one_sample, aes(x = Location_Center_X , y = Location_Center_Y, colour = celltype )) + geom_point()  + scale_colour_manual(values = color_codes)  + ggtitle( "Patient MB-0263")
+a <-ggplot( one_sample, aes(x = Location_Center_X , y = Location_Center_Y, colour = celltype )) + geom_point()  + scale_colour_tableau()  + ggtitle( "Patient MB-0263")
 
 
 feature  <- scfeatures_result$celltype_interaction
-to_plot <- data.frame( t( feature[ "MB-0263_cond_good" , ])  )
+to_plot <- data.frame( t( feature[ grep("MB-0263", rownames(feature)) , ])  )
 to_plot$feature <- rownames(to_plot) 
 colnames(to_plot) <- c("value", "celltype interaction composition")
  
@@ -976,7 +972,6 @@ b <- ggplot(to_plot, aes(x = reorder(`celltype interaction composition`, value) 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
 
 ggarrange(plotlist = list(a,b))
- 
 ```
 
 
